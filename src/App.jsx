@@ -8,6 +8,7 @@ function App() {
   const [status, setStatus] = useState("loading");
   const [message, setMessage] = useState("");
 
+  // Setup new user
   const handleSetup = async () => {
     const email = prompt("Enter your email:");
     const name = prompt("Enter your name:");
@@ -27,6 +28,27 @@ function App() {
     setUser(userData);
   };
 
+  // Change user (find or create)
+  const handleChangeUser = async () => {
+    const email = prompt("Enter your email:");
+    const name = prompt("Enter your name:");
+    const contactEmail = prompt("Enter your contact’s email:");
+    const customMessage = prompt("Enter your custom message (optional):");
+    const intervalHours = 168;
+
+    const response = await fetch(`${BACKEND_URL}/findOrCreate`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name, email, contactEmail, intervalHours, message: customMessage }),
+    });
+
+    const data = await response.json();
+    const userData = { ...data.user, userId: data.userId };
+    localStorage.setItem("imokayUser", JSON.stringify(userData));
+    setUser(userData);
+  };
+
+  // Check-in
   const handleCheckin = async () => {
     await fetch(`${BACKEND_URL}/checkin`, {
       method: "POST",
@@ -36,6 +58,7 @@ function App() {
     setStatus("okay");
   };
 
+  // Fetch status
   useEffect(() => {
     const fetchStatus = async () => {
       if (user?.userId) {
@@ -70,6 +93,10 @@ function App() {
             }}
           >
             Tap 👍 I'm Okay
+          </button>
+          <br />
+          <button onClick={handleChangeUser} style={{ marginTop: "20px" }}>
+            Change User
           </button>
         </>
       )}
