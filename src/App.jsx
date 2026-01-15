@@ -27,6 +27,8 @@ function App() {
   // Double-click thumb → new user
   const handleNewUser = async () => {
     const email = prompt("Enter user's email:");
+    if (!email) return;
+
     const response = await fetch("https://your-backend.onrender.com/findOrCreate", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
