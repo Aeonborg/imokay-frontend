@@ -3,15 +3,17 @@ import React, { useState, useEffect } from "react";
 function App() {
   const [userId, setUserId] = useState(null);
   const [status, setStatus] = useState(null);
+  const [intervalHours, setIntervalHours] = useState(168); // default 1 week
 
-  // Fetch status for current user
+  // Fetch status
   const fetchStatus = async (id) => {
     const res = await fetch(`https://your-backend.onrender.com/status/${id}`);
     const data = await res.json();
     setStatus(data.status);
+    setIntervalHours(data.intervalHours);
   };
 
-  // Handle check-in
+  // Check-in
   const handleCheckin = async () => {
     if (!userId) return;
     await fetch("https://your-backend.onrender.com/checkin", {
@@ -22,10 +24,9 @@ function App() {
     fetchStatus(userId);
   };
 
-  // Handle change user
-  const handleChangeUser = async () => {
+  // Double-click thumb → new user
+  const handleNewUser = async () => {
     const email = prompt("Enter user's email:");
-
     const response = await fetch("https://your-backend.onrender.com/findOrCreate", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -35,38 +36,59 @@ function App() {
     const data = await response.json();
 
     if (data.error && data.error === "Missing fields to create new user") {
-      // Ask for extra info only if user doesn't exist
       const name = prompt("Enter new user's name:");
+      const contactPerson = prompt("Enter contact person:");
       const contactEmail = prompt("Enter contact's email:");
-      const intervalHours = prompt("Enter check-in interval (hours):");
+      const message = prompt("Enter message:");
+      const intervalHours = prompt("Enter interval (hours):");
 
       const createResponse = await fetch("https://your-backend.onrender.com/findOrCreate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, name, contactEmail, intervalHours })
+        body: JSON.stringify({ email, name, contactPerson, contactEmail, message, intervalHours })
       });
 
       const createData = await createResponse.json();
       setUserId(createData.userId);
       fetchStatus(createData.userId);
     } else {
-      // Existing user found
       setUserId(data.userId);
       fetchStatus(data.userId);
     }
   };
 
+  // Edit interval via clock icon
+  const handleEditInterval = async () => {
+    const newInterval = prompt("Enter new interval (hours):", intervalHours);
+    if (!userId || !newInterval) return;
+
+    await fetch("https://your-backend.onrender.com/updateInterval", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ userId, intervalHours: newInterval })
+    });
+
+    setIntervalHours(newInterval);
+    fetchStatus(userId);
+  };
+
   return (
     <div style={{ textAlign: "center", marginTop: "50px" }}>
       <h1>ImOkay</h1>
-      <button onClick={handleCheckin}>👍 Tap I'm Okay</button>
-      <button onClick={handleChangeUser} style={{ marginLeft: "10px" }}>
-        🔄 Change User
-      </button>
-      <div style={{ marginTop: "20px", fontSize: "40px" }}>
+      <div
+        style={{ fontSize: "100px", cursor: "pointer", color: status === "missed" ? "red" : "green" }}
+        onClick={handleCheckin}
+        onDoubleClick={handleNewUser}
+      >
         {status === "okay" && "👍"}
         {status === "missed" && "👎"}
         {!status && "❓"}
+      </div>
+      <div
+        style={{ fontSize: "30px", cursor: "pointer", marginTop: "20px" }}
+        onClick={handleEditInterval}
+      >
+        ⏰
       </div>
     </div>
   );
