@@ -29,24 +29,30 @@ function App() {
   };
 
   // Change user (find or create)
-  const handleChangeUser = async () => {
-    const email = prompt("Enter your email:");
-    const name = prompt("Enter your name:");
-    const contactEmail = prompt("Enter your contact’s email:");
-    const customMessage = prompt("Enter your custom message (optional):");
-    const intervalHours = 168;
+const handleChangeUser = async () => {
+  const name = prompt("Enter new user's name:");
+  const email = prompt("Enter new user's email:");
+  const contactEmail = prompt("Enter contact's email:");
+  const intervalHours = prompt("Enter check-in interval (hours):");
 
-    const response = await fetch(`${BACKEND_URL}/findOrCreate`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, email, contactEmail, intervalHours, message: customMessage }),
-    });
+  const response = await fetch("https://your-backend.onrender.com/findOrCreate", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name, email, contactEmail, intervalHours })
+  });
 
-    const data = await response.json();
-    const userData = { ...data.user, userId: data.userId };
-    localStorage.setItem("imokayUser", JSON.stringify(userData));
-    setUser(userData);
-  };
+  const data = await response.json();
+  setUserId(data.userId);
+
+  // Reset status so thumbs don’t stay stuck
+  setStatus(null);
+
+  // Fetch the new user’s status immediately
+  const statusResponse = await fetch(`https://your-backend.onrender.com/status/${data.userId}`);
+  const statusData = await statusResponse.json();
+  setStatus(statusData.status);
+};
+
 
   // Check-in
   const handleCheckin = async () => {
