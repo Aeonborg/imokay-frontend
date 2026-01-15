@@ -1,111 +1,73 @@
-import { useState, useEffect } from "react";
-
-const BACKEND_URL = "https://imokay-backend.onrender.com"; // your backend URL
+import React, { useState, useEffect } from "react";
 
 function App() {
-  const savedUser = localStorage.getItem("imokayUser");
-  const [user, setUser] = useState(savedUser ? JSON.parse(savedUser) : null);
-  const [status, setStatus] = useState("loading");
-  const [message, setMessage] = useState("");
+  const [userId, setUserId] = useState(null);
+  const [status, setStatus] = useState(null);
 
-  // Setup new user
-  const handleSetup = async () => {
-    const email = prompt("Enter your email:");
-    const name = prompt("Enter your name:");
-    const contactEmail = prompt("Enter your contact’s email:");
-    const customMessage = prompt("Enter your custom message (optional):");
-    const intervalHours = 168;
+  // Fetch status for current user
+  const fetchStatus = async (id) => {
+    const res = await fetch(`https://your-backend.onrender.com/status/${id}`);
+    const data = await res.json();
+    setStatus(data.status);
+  };
 
-    const response = await fetch(`${BACKEND_URL}/setup`, {
+  // Handle check-in
+  const handleCheckin = async () => {
+    if (!userId) return;
+    await fetch("https://your-backend.onrender.com/checkin", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, email, contactEmail, intervalHours, message: customMessage }),
+      body: JSON.stringify({ userId })
+    });
+    fetchStatus(userId);
+  };
+
+  // Handle change user
+  const handleChangeUser = async () => {
+    const email = prompt("Enter user's email:");
+
+    const response = await fetch("https://your-backend.onrender.com/findOrCreate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email })
     });
 
     const data = await response.json();
-    const userData = { name, email, contactEmail, intervalHours, message: customMessage, userId: data.userId };
-    localStorage.setItem("imokayUser", JSON.stringify(userData));
-    setUser(userData);
+
+    if (data.error && data.error === "Missing fields to create new user") {
+      // Ask for extra info only if user doesn't exist
+      const name = prompt("Enter new user's name:");
+      const contactEmail = prompt("Enter contact's email:");
+      const intervalHours = prompt("Enter check-in interval (hours):");
+
+      const createResponse = await fetch("https://your-backend.onrender.com/findOrCreate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, name, contactEmail, intervalHours })
+      });
+
+      const createData = await createResponse.json();
+      setUserId(createData.userId);
+      fetchStatus(createData.userId);
+    } else {
+      // Existing user found
+      setUserId(data.userId);
+      fetchStatus(data.userId);
+    }
   };
-
-  // Change user (find or create)
-const handleChangeUser = async () => {
-  const name = prompt("Enter new user's name:");
-  const email = prompt("Enter new user's email:");
-  const contactEmail = prompt("Enter contact's email:");
-  const intervalHours = prompt("Enter check-in interval (hours):");
-
-  const response = await fetch("https://your-backend.onrender.com/findOrCreate", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ name, email, contactEmail, intervalHours })
-  });
-
-  const data = await response.json();
-  setUserId(data.userId);
-
-  // Reset status so thumbs don’t stay stuck
-  setStatus(null);
-
-  // Fetch the new user’s status immediately
-  const statusResponse = await fetch(`https://your-backend.onrender.com/status/${data.userId}`);
-  const statusData = await statusResponse.json();
-  setStatus(statusData.status);
-};
-
-
-  // Check-in
-  const handleCheckin = async () => {
-    await fetch(`${BACKEND_URL}/checkin`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ userId: user.userId }),
-    });
-    setStatus("okay");
-  };
-
-  // Fetch status
-  useEffect(() => {
-    const fetchStatus = async () => {
-      if (user?.userId) {
-        const response = await fetch(`${BACKEND_URL}/status/${user.userId}`);
-        const data = await response.json();
-        setStatus(data.status);
-        setMessage(data.message);
-      }
-    };
-    fetchStatus();
-  }, [user]);
 
   return (
     <div style={{ textAlign: "center", marginTop: "50px" }}>
       <h1>ImOkay</h1>
-      {!user && <button onClick={handleSetup}>Setup</button>}
-      {user && (
-        <>
-          <div style={{ fontSize: "100px", color: status === "okay" ? "green" : "black" }}>
-            {status === "okay" ? "👍" : "👎"}
-          </div>
-          <p>{message}</p>
-          <button
-            onClick={handleCheckin}
-            style={{
-              fontSize: "30px",
-              marginTop: "20px",
-              padding: "20px",
-              borderRadius: "50%",
-              background: "green",
-              color: "white",
-            }}
-          >
-            Tap 👍 I'm Okay
-          </button>
-          <br />
-          <button onClick={handleChangeUser} style={{ marginTop: "20px" }}>
-            Change User
-          </button>
-        </>
-      )}
+      <button onClick={handleCheckin}>👍 Tap I'm Okay</button>
+      <button onClick={handleChangeUser} style={{ marginLeft: "10px" }}>
+        🔄 Change User
+      </button>
+      <div style={{ marginTop: "20px", fontSize: "40px" }}>
+        {status === "okay" && "👍"}
+        {status === "missed" && "👎"}
+        {!status && "❓"}
+      </div>
     </div>
   );
 }
